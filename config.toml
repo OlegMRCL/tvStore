@@ -1,0 +1,7 @@
+
+ListenHost = "127.0.0.1"
+ListenPort = "8080"
+
+DbName = "productdb"
+DbUser = "root"
+DbPassword = ""
