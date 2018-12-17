@@ -31,6 +31,7 @@ func All(w http.ResponseWriter, r *http.Request) {
 	rows, err := app.db.Query("SELECT * FROM productdb.tv")
 	fmt.Println("mysql: SELECT * FROM productdb.tv")
 	if err != nil {
+		w.WriteHeader(500)
 		log.Println(err)
 	}
 	defer rows.Close()
@@ -45,6 +46,7 @@ func All(w http.ResponseWriter, r *http.Request) {
 		}
 		tvs = append(tvs, tv)
 	}
+	w.WriteHeader(200)
 	json.NewEncoder(w).Encode(tvs)
 }
 
@@ -66,12 +68,14 @@ func Get(w http.ResponseWriter, r *http.Request) {
 	err := rows.Scan(&tv.Id, &tv.Brand, &tv.Manufacturer, &tv.Model, &tv.Year)
 
 	if err == sql.ErrNoRows {
+		w.WriteHeader(404)
 		http.NotFound(w, r)
 	} else if err != nil {
-		http.Error(w, http.StatusText(500), 500)
+		w.WriteHeader(500)
 		log.Println(err)
 		answer.Err = err
 	}else{
+		w.WriteHeader(200)
 		answer.Ok = true
 		answer.Tv = tv
 		_, v := validate(tv)
@@ -98,7 +102,7 @@ func Add(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	if (err != nil)&&(err != io.EOF) {
-		http.Error(w, http.StatusText(500), 500)
+		w.WriteHeader(500)
 		log.Println(err)
 		answer.Err = err
 
@@ -110,13 +114,15 @@ func Add(w http.ResponseWriter, r *http.Request) {
 			tv.Brand, tv.Manufacturer, tv.Model, tv.Year)
 
 		if err != nil {
-			http.Error(w, http.StatusText(500), 500)
+			w.WriteHeader(500)
 			log.Println(err)
 			answer.Err = err
 		} else {
+			w.WriteHeader(200)
 			answer.Ok = true
 		}
 	}else{
+		w.WriteHeader(400)
 		formatErrors(v)
 		answer.Fields = v
 	}
@@ -144,18 +150,21 @@ func Remove (w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case err == sql.ErrNoRows:
+		w.WriteHeader(404)
 		http.NotFound(w, r)
 	case err != nil:
-		http.Error(w, http.StatusText(500), 500)
+		w.WriteHeader(500)
 		log.Println(err)
 		answer.Err = err
 	default:
 		_, err = app.db.Exec("DELETE FROM productdb.tv WHERE id = ?", id)
 		fmt.Printf("mysql: DELETE FROM productdb.tv WHERE id = %v \n", id)
 		if err != nil {
+			w.WriteHeader(500)
 			log.Println(err)
 			answer.Err = err
 		}else{
+			w.WriteHeader(200)
 			answer.Ok = true
 		}
 	}
@@ -179,6 +188,7 @@ func Update (w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case err == sql.ErrNoRows:
+		w.WriteHeader(404)
 		http.NotFound(w, r)
 	case (err != nil)&&(err != io.EOF):
 		http.Error(w, http.StatusText(500), 500)
@@ -188,6 +198,7 @@ func Update (w http.ResponseWriter, r *http.Request) {
 		err := json.NewDecoder(r.Body).Decode(&tv)
 		answer.Tv = tv
 		if err != nil {
+			w.WriteHeader(400)
 			fmt.Println(err)
 			answer.Err = err
 		} else if ok, v := validate(tv); ok{
@@ -197,12 +208,15 @@ func Update (w http.ResponseWriter, r *http.Request) {
 			fmt.Printf("UPDATE productdb.tv SET brand = %v, manufacturer = %v, model = %v, year = %v WHERE id = %v",
 				tv.Brand, tv.Manufacturer, tv.Model, tv.Year, id)
 			if err != nil {
+				w.WriteHeader(500)
 				log.Println(err)
 				answer.Err = err
 			} else {
+				w.WriteHeader(200)
 				answer.Ok = true
 			}
 		}else{
+			w.WriteHeader(400)
 			formatErrors(v)
 			answer.Fields = v
 		}
